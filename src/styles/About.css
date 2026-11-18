@@ -1,0 +1,8 @@
+.about-text {
+  max-width: 22ch;
+  font-weight: 300;
+  font-size: clamp(1.6rem, 4.6vw, 3.4rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.about-text .muted { color: var(--muted); }

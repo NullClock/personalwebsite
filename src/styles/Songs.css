@@ -1,0 +1,109 @@
+.songs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 2.5rem 1.5rem;
+}
+
+.song-card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.song-card:focus-visible { outline: 1px solid var(--fg); outline-offset: 6px; }
+
+.song-cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #0a0a0a;
+  border: 1px solid var(--line);
+}
+.song-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1);
+  transition: filter 0.7s var(--ease), transform 0.9s var(--ease);
+}
+.song-card:hover .song-cover img,
+.song-card:focus-visible .song-cover img,
+.song-card.is-playing .song-cover img {
+  filter: none;
+  transform: scale(1.04);
+}
+
+.song-play {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid #555;
+  font-size: 0.65rem;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.4s var(--ease), transform 0.4s var(--ease), border-color 0.4s;
+}
+.song-card:hover .song-play,
+.song-card:focus-visible .song-play,
+.song-card.is-playing .song-play {
+  opacity: 1;
+  transform: none;
+}
+.song-card.is-playing .song-play { border-color: var(--fg); }
+
+.song-info {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  gap: 0.2rem 0.5rem;
+  padding-top: 0.85rem;
+}
+.song-index {
+  grid-row: span 2;
+  padding-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.song-title,
+.song-artist {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.song-title { font-size: 0.9rem; }
+.song-artist {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.song-card.is-playing .song-title::after {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--fg);
+}
+
+@media (hover: none) {
+  .song-play { opacity: 1; transform: none; }
+}
+
+@media (max-width: 600px) {
+  .songs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 1rem; }
+}
