@@ -1,0 +1,20 @@
+.story-copy {
+  max-width: 64ch;
+}
+
+.story-paragraph {
+  font-weight: 300;
+  font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+  line-height: 1.65;
+  color: #cfcfcf;
+}
+
+.story-paragraph:first-child {
+  color: var(--fg);
+  font-size: clamp(1.25rem, 2.8vw, 1.75rem);
+  line-height: 1.45;
+}
+
+.story-paragraph + .story-paragraph {
+  margin-top: 1.4rem;
+}

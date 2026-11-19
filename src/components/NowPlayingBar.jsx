@@ -101,12 +101,17 @@ export default function NowPlayingBar() {
           <div className="np-current">
             <Art src={track.art} />
             <div className="np-meta">
+              <span className="np-sub">
+                <i className={`np-dot${track.enabled ? " is-live" : ""}`} aria-hidden="true" />
+                <span>{track.enabled ? "Currently Listening" : "Offline"}</span>
+                {/* {track.artist && <span className="np-artist" title={track.artist}>/ {track.artist}</span>} */}
+              </span>
               <span className="np-title" title={track.enabled ? track.title : undefined}>
                 {track.enabled ? track.title : "Nothing playing"}
               </span>
               <span className="np-sub">
-                <i className={`np-dot${track.enabled ? " is-live" : ""}`} aria-hidden="true" />
-                <span>{track.enabled ? "Now playing" : "Offline"}</span>
+                {/* <i className={`np-dot${track.enabled ? " is-live" : ""}`} aria-hidden="true" /> */}
+                {/* <span>{track.enabled ? "Currently Listening" : "Offline"}</span> */}
                 {track.artist && <span className="np-artist" title={track.artist}>/ {track.artist}</span>}
               </span>
             </div>

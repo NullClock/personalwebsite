@@ -20,7 +20,7 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  font-weight: 300;
+  font-weight: 100;
   font-size: clamp(2.6rem, 10vw, 8rem);
   letter-spacing: -0.04em;
   line-height: 1;

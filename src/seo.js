@@ -57,6 +57,8 @@ const cleanList = (items) =>
 export function buildSeo(content = {}) {
   const hero = content.hero || {};
   const about = content.about || {};
+  const story = content.story || {};
+  const names = content.names || {};
   const footer = content.footer || {};
   const projects = Array.isArray(content.projects) ? content.projects : [];
   const songs = Array.isArray(content.songs) ? content.songs : [];
@@ -69,12 +71,16 @@ export function buildSeo(content = {}) {
   const location = footer.location || FALLBACK_LOCATION;
   const title = `${name} — ${subtitle}`;
   const description = `Live workbench and portfolio of ${name}: embedded systems, ESP32 hardware builds, web apps, and creative tech projects. Based in ${location}.`;
-  const personDescription = [about.text, about.muted].filter(Boolean).join(" ") || description;
+  const personDescription =
+    [about.text, about.muted, ...((Array.isArray(story.paragraphs) ? story.paragraphs : []).slice(0, 1))]
+      .filter(Boolean)
+      .join(" ") || description;
+  const knownNames = cleanList([name, ...(Array.isArray(names.items) ? names.items : [])]);
   const image = absolute("uploads/og-image.png");
   const url = SITE_URL;
 
   const keywords = cleanList([
-    name,
+    ...knownNames,
     subtitle,
     location,
     "portfolio",
@@ -92,7 +98,8 @@ export function buildSeo(content = {}) {
       "@type": "Person",
       "@id": id("#person"),
       name,
-      alternateName: ["Helio M. Leles", "Helio Meira de Souza Leles"],
+      alternateName: knownNames.filter((alias) => alias !== name),
+      nationality: { "@type": "Country", name: "Brazil" },
       url,
       jobTitle: subtitle,
       description: personDescription,

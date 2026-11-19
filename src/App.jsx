@@ -7,6 +7,8 @@ import Hero from "./components/Hero";
 import About from "./components/About";
 import Marquee from "./components/Marquee";
 import Work from "./components/Work";
+import Story from "./components/Story";
+import Names from "./components/Names";
 import Songs from "./components/Songs";
 import Socials from "./components/Socials";
 import Contact from "./components/Contact";
@@ -28,6 +30,8 @@ export default function App() {
       <About {...content.about} />
       <Marquee words={content.marquee} />
       <Work projects={content.projects} />
+      <Story {...content.story} />
+      <Names {...content.names} />
       <Songs songs={content.songs} />
       <Socials socials={content.socials} />
       <Contact {...content.contact} />

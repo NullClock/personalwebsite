@@ -1,0 +1,45 @@
+/* Aliases exist for search engines only: clipped, transparent, out of flow.
+   Not display:none / visibility:hidden, which crawlers can ignore. */
+.section.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  color: transparent;
+}
+
+.names-subtext {
+  max-width: 48ch;
+  margin: -1rem 0 2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.names-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.names-list li {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+  font-weight: 300;
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 600px) {
+  .names-list {
+    grid-template-columns: 1fr;
+  }
+}
