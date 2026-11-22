@@ -1,0 +1,467 @@
+/* Procedural cyberpunk skyline. Everything is drawn with layered CSS, so it
+   stays sharp on phones and doesn't depend on an image or canvas snapshot. */
+
+.city {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #05010c;
+  animation: city-in 1.8s var(--ease) both;
+}
+
+@keyframes city-in {
+  from { opacity: 0; transform: scale(1.05); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- sky ---------- */
+
+.city__sky {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 75% 48% at 50% 96%, rgba(196, 82, 255, 0.55), transparent 68%),
+    radial-gradient(ellipse 58% 34% at 50% 54%, rgba(126, 38, 222, 0.34), transparent 72%),
+    radial-gradient(ellipse 44% 30% at 86% 66%, rgba(255, 79, 216, 0.22), transparent 72%),
+    radial-gradient(ellipse 55% 40% at 12% 72%, rgba(92, 45, 200, 0.42), transparent 72%),
+    linear-gradient(
+      180deg,
+      #03000a 0%,
+      #080114 26%,
+      #15032c 48%,
+      #2c0852 66%,
+      #571384 80%,
+      #7d1fa8 89%,
+      #340c4e 95%,
+      #07010e 100%
+    );
+}
+
+/* Black sheet sitting between the sky and the buildings. Scroll progress
+   fades it in, so the sky goes black while the city is still standing. */
+.city__dark {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #000;
+  opacity: min(1, calc(var(--p, 0) * 1.08));
+}
+
+/* ---------- stars ---------- */
+
+.city__stars {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: calc(1 - var(--p, 0) * 1.15);
+}
+
+.city__star-group {
+  position: absolute;
+  inset: 0;
+  animation: twinkle 7s ease-in-out infinite;
+}
+
+.city__star-group--1 {
+  animation-duration: 9.5s;
+  animation-delay: -3s;
+}
+
+.city__star-group--2 {
+  animation-duration: 5.5s;
+  animation-delay: -5s;
+}
+
+.city__star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  opacity: var(--star-opacity, 0.7);
+  box-shadow: 0 0 4px 1px rgba(221, 198, 255, 0.45);
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* ---------- moon ---------- */
+
+.city__moon {
+  position: absolute;
+  top: 9%;
+  right: 12%;
+  z-index: 1;
+  width: clamp(76px, 13vw, 152px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 26%, rgba(255, 244, 255, 0.38) 0%, transparent 22%),
+    radial-gradient(circle at 62% 70%, rgba(52, 8, 90, 0.32) 0%, transparent 20%),
+    radial-gradient(circle at 72% 36%, rgba(255, 214, 255, 0.18) 0%, transparent 16%),
+    radial-gradient(circle at 36% 30%, #ffe8ff 0%, #e2a2ff 22%, #a33cff 48%, #5b1296 74%, #22043c 100%);
+  box-shadow:
+    0 0 26px rgba(210, 100, 255, 0.55),
+    0 0 90px rgba(140, 50, 255, 0.4),
+    0 0 180px rgba(110, 30, 220, 0.25);
+  opacity: calc(1 - var(--p, 0) * 1.1);
+  transform: translateY(calc(var(--p, 0) * 6vh));
+  /* The moon moves and fades on every scroll frame. Keeping it on its own
+     layer means the blurry glow is rasterised once instead of every frame. */
+  will-change: transform, opacity;
+}
+
+.city__moon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    rgba(6, 0, 14, 0.2) 3px 4px
+  );
+  opacity: 0.6;
+}
+
+/* ---------- searchlights ---------- */
+
+.city__beam {
+  position: absolute;
+  bottom: 13svh;
+  z-index: 1;
+  width: 42vw;
+  height: 76svh;
+  opacity: 0.5;
+  transform-origin: 50% 100%;
+  clip-path: polygon(47% 100%, 53% 100%, 100% 0, 0 0);
+  background: linear-gradient(to top, rgba(176, 92, 255, 0.24), rgba(176, 92, 255, 0) 74%);
+  animation: sweep 16s ease-in-out infinite alternate;
+}
+
+.city__beam--a { left: 4%; --from: -15deg; --to: 7deg; }
+.city__beam--b {
+  right: 2%;
+  --from: 13deg;
+  --to: -6deg;
+  opacity: 0.32;
+  animation-duration: 21s;
+  background: linear-gradient(to top, rgba(103, 238, 255, 0.2), rgba(103, 238, 255, 0) 74%);
+}
+
+@keyframes sweep {
+  from { transform: rotate(var(--from)); }
+  to   { transform: rotate(var(--to)); }
+}
+
+/* ---------- skyline ---------- */
+
+.skyline {
+  position: absolute;
+  left: -4vw;
+  right: -4vw;
+  overflow: hidden;
+  z-index: 3;
+  contain: layout paint style;
+}
+
+/* Back row: shorter, hazier, and first to retract. */
+.skyline--far {
+  bottom: 16svh;
+  height: 29svh;
+  opacity: 0.9;
+  --dx: -2vw;
+}
+.skyline--far .bld {
+  --bld-top: #1d0836;
+  --bld-mid: #0a0217;
+}
+
+.skyline--mid {
+  bottom: 13svh;
+  height: 37svh;
+  --dx: 1.4vw;
+}
+.skyline--mid .bld {
+  --bld-top: #2a0a4c;
+  --bld-mid: #0d021c;
+}
+
+/* Front row: darkest, tallest, retracts last. */
+.skyline--near {
+  bottom: 10svh;
+  height: 45svh;
+  z-index: 3;
+  --dx: 3vw;
+}
+.skyline--near .bld {
+  --bld-top: #360d60;
+  --bld-mid: #0b0115;
+}
+
+.skyline__band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Each band slides down into the layer's overflow-hidden base. Keeping the
+     transform on the band (not each building) means only nine composited
+     layers update while scrolling, which keeps old phones smooth. The small
+     horizontal drift is folded in here too, so the skyline rows themselves
+     never need to repaint. */
+  transform: translate3d(
+    calc(var(--p, 0) * var(--dx, 0px)),
+    calc(min(1, calc(var(--p, 0) * var(--k, 1.2))) * 100%),
+    0
+  );
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.bld {
+  position: absolute;
+  bottom: 0;
+  contain: layout style;
+  background: linear-gradient(180deg, var(--bld-top) 0%, var(--bld-mid) 64%, #030007 100%);
+  border-top: 1px solid rgba(190, 100, 255, 0.28);
+}
+
+.bld__windows {
+  position: absolute;
+  inset: 7% 9% 5%;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 3px,
+      rgba(var(--win), var(--win-opacity)) 3px 5px,
+      transparent 5px 9px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 4px,
+      rgba(3, 0, 9, 0.96) 4px 8px
+    );
+}
+
+.skyline--far .bld__windows { opacity: 0.38; }
+.skyline--mid .bld__windows { opacity: 0.68; }
+.skyline--near .bld__windows { opacity: 0.9; }
+
+.bld--flicker .bld__windows {
+  animation: windows-flicker 6.5s steps(1, end) infinite;
+  animation-delay: var(--win-delay, 0s);
+}
+
+@keyframes windows-flicker {
+  0%, 38%, 41%, 44%, 47%, 100% { opacity: 0.9; }
+  39%, 42% { opacity: 0.22; }
+  72%      { opacity: 0.42; }
+}
+
+.bld__antenna {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 1px;
+  height: var(--ah, 12%);
+  background: linear-gradient(to top, rgba(255, 120, 224, 0.55), rgba(255, 120, 224, 0.05));
+}
+
+.bld__antenna::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ff5bdd;
+  box-shadow: 0 0 8px 2px rgba(255, 79, 216, 0.85);
+  transform: translateX(-50%);
+  animation: beacon 2.6s ease-in-out infinite;
+}
+
+@keyframes beacon {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+
+.bld__sign {
+  position: absolute;
+  top: 16%;
+  left: 13%;
+  width: 2px;
+  height: 34%;
+  border-radius: 2px;
+  background: rgba(var(--sign), 0.9);
+  box-shadow: 0 0 7px 1px rgba(var(--sign), 0.8);
+  animation: sign-flicker 5s steps(1, end) infinite;
+}
+
+@keyframes sign-flicker {
+  0%, 8%, 11%, 100% { opacity: 0.85; }
+  9%, 32% { opacity: 0.18; }
+  57%     { opacity: 0.5; }
+}
+
+/* ---------- atmosphere ---------- */
+
+.city__haze {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: 6svh;
+  height: 28svh;
+  z-index: 4;
+  background:
+    radial-gradient(ellipse at 26% 100%, rgba(160, 62, 255, 0.28), transparent 62%),
+    radial-gradient(ellipse at 72% 100%, rgba(255, 79, 216, 0.16), transparent 58%),
+    radial-gradient(ellipse at 50% 100%, rgba(110, 50, 220, 0.22), transparent 72%);
+  opacity: calc(1 - var(--p, 0));
+  animation: haze-drift 24s ease-in-out infinite alternate;
+}
+
+@keyframes haze-drift {
+  from { transform: translateX(-2%); }
+  to   { transform: translateX(2%); }
+}
+
+.city__street {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 13svh;
+  z-index: 4;
+  border-top: 1px solid rgba(204, 118, 255, 0.45);
+  background:
+    linear-gradient(180deg, rgba(143, 46, 214, 0.4) 0%, rgba(12, 2, 24, 0.92) 38%, #000 100%),
+    repeating-linear-gradient(90deg, rgba(170, 84, 255, 0.22) 0 1px, transparent 1px 54px),
+    repeating-linear-gradient(0deg, rgba(170, 84, 255, 0.14) 0 1px, transparent 1px 28px);
+  box-shadow: 0 -18px 60px rgba(140, 40, 255, 0.35);
+  opacity: calc(1 - var(--p, 0));
+  /* Street gradient + glow are expensive to rasterise, so fade the cached
+     layer instead of repainting it on every scroll frame. */
+  will-change: opacity;
+}
+
+/* Vignette + scanlines share one full-screen element so the compositor only
+   has to blend one overlay instead of two on every frame. */
+.city__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.016) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(180deg, rgba(3, 0, 8, 0.72) 0%, transparent 26%, transparent 60%, rgba(0, 0, 0, 0.82) 100%),
+    radial-gradient(ellipse at 50% 42%, transparent 26%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 640px) {
+  .city__moon {
+    top: 12%;
+    right: 8%;
+  }
+
+  .city__haze { height: 22svh; }
+}
+
+/* Reduced scene for touch devices (phones/tablets), which are the most likely
+   to have slower GPUs: one fewer skyline layer, half the stars, no beams or
+   continuous flicker animations, and no intro scale on the city. */
+@media (max-width: 640px), (hover: none) and (pointer: coarse) {
+  .city { animation: none; }
+  .city__beam { display: none; }
+  .city__star:nth-child(even) { display: none; }
+  .skyline--far { display: none; }
+  .city__haze { animation: none; }
+  /* Static stars: the twinkle would keep three full-screen layers compositing
+     forever, even while the page is idle. */
+  .city__star-group { animation: none; }
+
+  .bld--flicker .bld__windows,
+  .bld__antenna::before,
+  .bld__sign {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city,
+  .city__star-group,
+  .city__beam,
+  .city__haze,
+  .bld--flicker .bld__windows,
+  .bld__antenna::before,
+  .bld__sign {
+    animation: none !important;
+  }
+}
+
+/* =====================================================================
+   LITE MODE — older / slower clients
+   Applied when usePerformanceTier() detects a slow device and sets
+   [data-lite] on <html>. Full-tier browsers are completely unaffected.
+   ===================================================================== */
+
+/* No intro scale — saves a composited layer during first paint. */
+[data-lite] .city { animation: none; }
+
+/* Drop the far skyline layer (saves ~15 DOM nodes + their repaints). */
+[data-lite] .skyline--far { display: none; }
+
+/* Kill the searchlight sweep — two full-screen animated layers gone. */
+[data-lite] .city__beam { display: none; }
+
+/* Static stars: twinkle keeps three full-screen layers compositing forever.
+   Half the star dots are also hidden to cut rendering cost further. */
+[data-lite] .city__star-group { animation: none; }
+[data-lite] .city__star:nth-child(even) { display: none; }
+
+/* No haze drift — saves a wide repaint on every animation tick. */
+[data-lite] .city__haze { animation: none; }
+
+/* Freeze all per-building micro-animations: window flicker, beacon pulse,
+   neon sign flicker. Each is a separate composited layer; remove them all. */
+[data-lite] .bld--flicker .bld__windows,
+[data-lite] .bld__antenna::before,
+[data-lite] .bld__sign {
+  animation: none;
+}
+
+/* Simplify the sky gradient — fewer radial-gradient layers = faster rasterise.
+   The linear gradient (the deep purple → black tone) is kept for atmosphere. */
+[data-lite] .city__sky {
+  background: linear-gradient(
+    180deg,
+    #03000a 0%,
+    #080114 26%,
+    #15032c 48%,
+    #2c0852 66%,
+    #571384 80%,
+    #7d1fa8 89%,
+    #340c4e 95%,
+    #07010e 100%
+  );
+}
+
+/* Remove moon glow box-shadows — blur spreads are GPU-expensive. */
+[data-lite] .city__moon {
+  box-shadow: none;
+  will-change: auto;
+}
+
+/* Stop the street layer from staying on will-change when in lite mode. */
+[data-lite] .city__street { will-change: auto; }
+
+/* Skip the band-level transform hint — fewer promoted layers on old GPUs. */
+[data-lite] .skyline__band { will-change: auto; }

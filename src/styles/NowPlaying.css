@@ -291,6 +291,22 @@
   html:root { --player-height: 5rem; }
 }
 
+/* The bar/drawer are already ~95% opaque, so the blur is mostly invisible.
+   Dropping it on touch devices avoids sampling the animated hero every frame. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
+  .np-bar {
+    background: rgba(0, 0, 0, 0.96);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .np-history {
+    background: rgba(0, 0, 0, 0.985);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .np-dot.is-live { animation: none; }
 }

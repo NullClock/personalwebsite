@@ -1,6 +1,7 @@
 import useContent from "./hooks/useContent";
 import useScrollVars from "./hooks/useScrollVars";
 import useSeo from "./hooks/useSeo";
+import usePerformanceTier from "./hooks/usePerformanceTier";
 
 import ScrollProgress from "./components/ScrollProgress";
 import Hero from "./components/Hero";
@@ -22,6 +23,7 @@ export default function App() {
   const content = useContent();
   useSeo(content);
   useScrollVars();
+  usePerformanceTier();
 
   return (
     <>
