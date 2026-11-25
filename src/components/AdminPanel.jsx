@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { apiJson } from "../api";
 import { searchSongs } from "../trackMedia";
-import { writeContentOverride } from "../data/contentStore";
+import { notifyContentChanged } from "../data/contentStore";
 import useSecretTrigger from "../hooks/useSecretTrigger";
 import "../styles/AdminPanel.css";
 
@@ -97,11 +97,7 @@ export default function AdminPanel() {
         headers: { "x-admin-pin": pinRef.current },
         body: JSON.stringify(db),
       });
-      writeContentOverride({
-        socials: db.socials,
-        songs: db.songs,
-        projects: db.projects,
-      });
+      notifyContentChanged();
       setStatus("Saved.");
     } catch {
       setStatus("Save failed — check the connection and passcode.");

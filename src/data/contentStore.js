@@ -1,25 +1,12 @@
-// The public site ships with hardcoded content in content.js. Admin edits are cached
-// locally and dispatched to useContent, so the site stays static unless someone edits it.
+// Mappers from the server (db.json) shape to the shape the public components use.
+// The server is the only source of truth for projects, songs and socials. Nothing is cached
+// in localStorage, so there is no per-browser copy that can drift from what other devices see.
 
-export const OVERRIDE_KEY = "portfolio-admin-content-v1";
+export const CONTENT_EVENT = "portfolio:content";
 
-export function readContentOverride() {
-  try {
-    return JSON.parse(window.localStorage.getItem(OVERRIDE_KEY)) || null;
-  } catch {
-    return null;
-  }
-}
-
-export function writeContentOverride({ socials = [], songs = [], projects = [] }) {
-  const payload = {
-    socials: toSiteSocials(socials),
-    songs: toSiteSongs(songs),
-    projects: toSiteProjects(projects),
-  };
-  window.localStorage.setItem(OVERRIDE_KEY, JSON.stringify(payload));
-  window.dispatchEvent(new Event("portfolio:content"));
-  return payload;
+// Called after a successful admin save so the open page refetches from the server.
+export function notifyContentChanged() {
+  window.dispatchEvent(new Event(CONTENT_EVENT));
 }
 
 /* Server (db.json) shape -> shape used by the public components. */
