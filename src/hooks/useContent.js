@@ -1,27 +1,52 @@
 import { useEffect, useState } from "react";
-import { content as localContent, REMOTE_CONTENT_URL } from "../data/content";
-import { readContentOverride } from "../data/contentStore";
+import { content as staticContent } from "../data/content";
+import { apiJson } from "../api";
+import {
+  CONTENT_EVENT,
+  toSiteProjects,
+  toSiteSongs,
+  toSiteSocials,
+} from "../data/contentStore";
 
-const withOverride = (base) => ({ ...base, ...(readContentOverride() || {}) });
+// Projects, featured songs and socials come ONLY from the server (db.json via GET /api/data).
+// Nothing is cached in the browser, so every device shows exactly what the admin panel saved.
+// Until the first response arrives those three sections are empty rather than showing stale
+// hardcoded data. Everything else (hero text, story, etc.) still comes from content.js.
+const EMPTY_SERVER_CONTENT = { projects: [], songs: [], socials: [] };
 
-// Returns local content immediately, then swaps in remote content if a URL is set.
-// Admin edits (stored locally) always win, so saved changes show up on the next render.
 export default function useContent() {
-  const [content, setContent] = useState(() => withOverride(localContent));
+  const [serverContent, setServerContent] = useState(EMPTY_SERVER_CONTENT);
 
   useEffect(() => {
-    const onAdminUpdate = () => setContent(withOverride(localContent));
-    window.addEventListener("portfolio:content", onAdminUpdate);
-    return () => window.removeEventListener("portfolio:content", onAdminUpdate);
+    let controller = null;
+
+    const load = async () => {
+      controller?.abort();
+      controller = new AbortController();
+      try {
+        const db = await apiJson("/data", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        setServerContent({
+          projects: toSiteProjects(db?.projects),
+          songs: toSiteSongs(db?.songs),
+          socials: toSiteSocials(db?.socials),
+        });
+      } catch (err) {
+        // Keep whatever is already on screen if the server can't be reached.
+        if (err?.name !== "AbortError") console.error("Failed to load site content:", err);
+      }
+    };
+
+    load();
+    // The admin panel fires this after a successful save so the open tab refetches from the server.
+    window.addEventListener(CONTENT_EVENT, load);
+    return () => {
+      controller?.abort();
+      window.removeEventListener(CONTENT_EVENT, load);
+    };
   }, []);
 
-  useEffect(() => {
-    if (!REMOTE_CONTENT_URL) return;
-    fetch(REMOTE_CONTENT_URL)
-      .then((res) => res.json())
-      .then((remote) => setContent(withOverride({ ...localContent, ...remote })))
-      .catch(() => {}); // keep local content if the request fails
-  }, []);
-
-  return content;
+  return { ...staticContent, ...serverContent };
 }
