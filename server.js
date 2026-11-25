@@ -13,6 +13,67 @@ const __dirname = path.dirname(__filename);
 // Load .env from the project root. Variables already set in the real environment win.
 dotenv.config({ path: path.join(__dirname, '.env') });
 
+/* ------------------------------------------------------------------ *
+ *  Now-playing history file  (+ `--recover`)
+ * ------------------------------------------------------------------ */
+
+// The history lives in memory for speed, but is mirrored to this JSON file on every change and
+// reloaded on startup, so a restart or crash no longer wipes it. Set HISTORY_FILE to put it
+// elsewhere (e.g. a mounted Docker volume). Staging (ENVIRONMENT=dev) gets its own default file
+// so it can never clobber production's history.
+const isDevEnv = ['dev', 'development'].includes((process.env.ENVIRONMENT || '').toLowerCase());
+const HISTORY_FILE = path.resolve(
+  process.env.HISTORY_FILE || path.join(__dirname, isDevEnv ? 'history.dev.json' : 'history.json')
+);
+
+// Accepts the JSON array this server writes (or export-history.mjs produces), oldest first.
+// Drops `historyId`, which is a paging-only field added by the HTTP endpoint.
+function parseHistory(text) {
+  const data = JSON.parse(text);
+  if (!Array.isArray(data)) throw new Error('expected a JSON array of history entries');
+  const bad = data.findIndex((e) => !e || typeof e !== 'object' || Array.isArray(e));
+  if (bad !== -1) throw new Error(`entry #${bad} is not an object`);
+  return data.map(({ historyId, ...entry }) => entry);
+}
+
+// Write to a temp file and rename, so a crash mid-write can't leave a truncated history file.
+function writeHistoryFile(entries) {
+  const tmp = `${HISTORY_FILE}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(entries, null, 2));
+  fs.renameSync(tmp, HISTORY_FILE);
+}
+
+// `node server.js --recover <file.json>` (or --recover=<file.json>) loads a history backup into
+// the history file and exits WITHOUT starting the server. It runs before the env-var check below
+// on purpose: recovering needs no PORT, ADMIN_PIN, etc.
+const recoverIdx = process.argv.findIndex((a) => a === '--recover' || a.startsWith('--recover='));
+if (recoverIdx !== -1) {
+  const arg = process.argv[recoverIdx];
+  const src = arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : process.argv[recoverIdx + 1];
+  if (!src || src.startsWith('--')) {
+    console.error('Usage: node server.js --recover <history-backup.json>');
+    process.exit(1);
+  }
+  try {
+    const srcPath = path.resolve(src);
+    if (srcPath === HISTORY_FILE) throw new Error('that is already the live history file');
+    const entries = parseHistory(fs.readFileSync(srcPath, 'utf8'));
+    if (fs.existsSync(HISTORY_FILE) && fs.statSync(HISTORY_FILE).size > 0) {
+      const bak = `${HISTORY_FILE}.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+      fs.copyFileSync(HISTORY_FILE, bak);
+      console.log(`Existing history kept as ${bak}`);
+    }
+    writeHistoryFile(entries);
+    console.log(`Recovered ${entries.length} entries into ${HISTORY_FILE}`);
+    console.log('Server NOT started. Start it normally to load them. (If a server is already running,');
+    console.log('stop it first: it holds its own copy in memory and would overwrite this file.)');
+    process.exit(0);
+  } catch (err) {
+    console.error(`Recover failed: ${err.message}`);
+    process.exit(1);
+  }
+}
+
 const app = express();
 const DB_FILE = path.join(__dirname, 'db.json');
 
@@ -355,7 +416,39 @@ app.put('/api/db', authGuard, (req, res) => {
 /* ---- Now playing (just relays what the phone posts; the browser looks up art/previews) ---- */
 
 // Oldest first. Append-only, so an entry's index is a stable id (used as the paging cursor).
-let NOWPLAYING_HISTORY = [];
+function loadHistory() {
+  if (!fs.existsSync(HISTORY_FILE)) return [];
+  try {
+    const entries = parseHistory(fs.readFileSync(HISTORY_FILE, 'utf8'));
+    log('info', 'history', `loaded ${entries.length} entries from ${HISTORY_FILE}`);
+    return entries;
+  } catch (err) {
+    // Never overwrite a file we couldn't read: move it aside so it can be inspected or recovered.
+    const aside = `${HISTORY_FILE}.corrupt-${Date.now()}`;
+    try { fs.renameSync(HISTORY_FILE, aside); } catch { /* nothing more we can do */ }
+    log('error', 'history', `could not read ${HISTORY_FILE} (${err.message}); moved it to ${aside}, starting empty`);
+    return [];
+  }
+}
+
+let NOWPLAYING_HISTORY = loadHistory();
+
+// Saves are coalesced (500ms) so a burst of changes is one write; shutdown flushes immediately.
+let historySaveTimer = null;
+function saveHistoryNow() {
+  if (historySaveTimer) {
+    clearTimeout(historySaveTimer);
+    historySaveTimer = null;
+  }
+  try {
+    writeHistoryFile(NOWPLAYING_HISTORY);
+  } catch (err) {
+    log('error', 'history', `failed to save history to ${HISTORY_FILE}: ${err.message}`);
+  }
+}
+function saveHistory() {
+  if (!historySaveTimer) historySaveTimer = setTimeout(saveHistoryNow, 500);
+}
 
 // A track only counts as "played" once it has been the current track for this long.
 // Anything replaced (or cleared) before that is treated as a skip and never reaches the history.
@@ -396,6 +489,7 @@ function startHistoryTimer(entry) {
     // Still the current track after MIN_PLAY_MS -> it wasn't skipped, so log it.
     if (nowplaying.enabled && trackKey(nowplaying) === key) {
       NOWPLAYING_HISTORY.push(entry);
+      saveHistory();
       log('info', 'history', `logged: "${entry[TITLE_KEY]}" (#${NOWPLAYING_HISTORY.length})`);
     }
   }, MIN_PLAY_MS);
@@ -474,6 +568,7 @@ app.delete('/api/nowplaying/history/single', authGuard, (req, res) => {
     NOWPLAYING_HISTORY.pop()
   else
     NOWPLAYING_HISTORY.splice(index, 1);
+  saveHistory();
 
   res.sendStatus(200);
 
@@ -483,6 +578,7 @@ app.delete('/api/nowplaying/history/single', authGuard, (req, res) => {
 app.delete('/api/nowplaying/history', authGuard, (req, res) => {
   log('info', 'nowplaying', 'cleared history');
   NOWPLAYING_HISTORY = [];
+  saveHistory();
   res.sendStatus(200);
 });
 
@@ -527,6 +623,14 @@ app.post("/api/admin/heroPhoto/upload", authGuard, upload.single('file'), (req, 
     }
   });
 });
+
+// Flush any pending save when the process is stopped (Ctrl+C, systemd, docker stop, pm2 restart).
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    saveHistoryNow();
+    process.exit(0);
+  });
+}
 
 app.listen(PORT, '0.0.0.0', () => {
   log('info', 'server', `Backend API running on port ${PORT} (${environment})`);
