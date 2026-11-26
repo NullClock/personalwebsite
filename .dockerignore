@@ -7,3 +7,6 @@ db.json
 old_portfolio
 *.log
 coverage
+history-backup-*.json
+history.json
+cacert.pem
