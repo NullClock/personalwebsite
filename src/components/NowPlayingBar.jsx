@@ -36,11 +36,30 @@ function HistoryRow({ item, count }) {
   );
 }
 
+function TopRow({ rank, song }) {
+  return (
+    <li className="np-history-row">
+      <span className="np-rank" aria-hidden="true">{rank}</span>
+      <Art src={song.art} small />
+      <span className="np-history-meta">
+        <span className="np-history-title" title={song.title}>{song.title}</span>
+        <span className="np-history-artist" title={song.artist}>{song.artist || "Unknown artist"}</span>
+      </span>
+      <span className="np-count">{song.plays} {song.plays === 1 ? "play" : "plays"}</span>
+    </li>
+  );
+}
+
 export default function NowPlayingBar() {
-  const { track, history, hasMore, loadingHistory, historyError, resetHistory, refreshHistory, loadMore } = useMusic();
+  const {
+    track, history, hasMore, loadingHistory, historyError, resetHistory, refreshHistory, loadMore,
+    top, topLoaded, topError, loadTop,
+  } = useMusic();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("recent"); // "recent" | "top"
+  const [topRange, setTopRange] = useState("week"); // "week" | "all"
   const panelRef = useRef(null);
-  const buttonRef = useRef(null);
+  const actionsRef = useRef(null);
 
   const groups = useMemo(() => groupHistory(history), [history]);
 
@@ -54,13 +73,21 @@ export default function NowPlayingBar() {
     return () => clearInterval(id);
   }, [open, resetHistory, refreshHistory]);
 
+  // Most played: load when that tab is showing, then keep it fresh while it's visible.
+  useEffect(() => {
+    if (!open || tab !== "top") return undefined;
+    loadTop(topRange);
+    const id = setInterval(() => loadTop(topRange), 20000);
+    return () => clearInterval(id);
+  }, [open, tab, topRange, loadTop]);
+
   useEffect(() => {
     if (!open) return undefined;
     const onKeyDown = (e) => {
       if (e.key === "Escape") setOpen(false);
     };
     const onPointerDown = (e) => {
-      if (panelRef.current?.contains(e.target) || buttonRef.current?.contains(e.target)) return;
+      if (panelRef.current?.contains(e.target) || actionsRef.current?.contains(e.target)) return;
       setOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
@@ -74,26 +101,63 @@ export default function NowPlayingBar() {
   return (
     <>
       {open && (
-        <div className="np-history" role="dialog" aria-label="Song history" ref={panelRef}>
+        <div id="np-history-panel" className="np-history" role="dialog" aria-label="Song history" ref={panelRef}>
           <div className="np-history-head">
-            <span>Song history</span>
-            <span>{history.length} {history.length === 1 ? "track" : "tracks"}</span>
+            <div className="np-tabs">
+              <button type="button" className={`np-tab${tab === "recent" ? " is-active" : ""}`} aria-pressed={tab === "recent"} onClick={() => setTab("recent")}>
+                History
+              </button>
+              <button type="button" className={`np-tab${tab === "top" ? " is-active" : ""}`} aria-pressed={tab === "top"} onClick={() => setTab("top")}>
+                Most played
+              </button>
+            </div>
+            <span>
+              {tab === "recent"
+                ? `${history.length} ${history.length === 1 ? "track" : "tracks"}`
+                : topRange === "all" ? "All time" : "This week"}
+            </span>
           </div>
 
-          {groups.length ? (
-            <ol className="np-history-list">
-              {groups.map(({ id, item, count }) => (
-                <HistoryRow key={id ?? item.key} item={item} count={count} />
-              ))}
-            </ol>
-          ) : (
-            <p className="np-empty">{historyError ? "History unavailable" : "Nothing here yet"}</p>
-          )}
+          {tab === "recent" ? (
+            <>
+              {groups.length ? (
+                <ol className="np-history-list">
+                  {groups.map(({ id, item, count }) => (
+                    <HistoryRow key={id ?? item.key} item={item} count={count} />
+                  ))}
+                </ol>
+              ) : (
+                <p className="np-empty">{historyError ? "History unavailable" : "Nothing here yet"}</p>
+              )}
 
-          {hasMore && (
-            <button className="np-more" type="button" onClick={loadMore} disabled={loadingHistory}>
-              {loadingHistory ? "Loading…" : "Load more"}
-            </button>
+              {hasMore && (
+                <button className="np-more" type="button" onClick={loadMore} disabled={loadingHistory}>
+                  {loadingHistory ? "Loading…" : "Load more"}
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="np-range" role="group" aria-label="Most played time range">
+                <button type="button" className={topRange === "week" ? "is-active" : ""} aria-pressed={topRange === "week"} onClick={() => setTopRange("week")}>
+                  This week
+                </button>
+                <button type="button" className={topRange === "all" ? "is-active" : ""} aria-pressed={topRange === "all"} onClick={() => setTopRange("all")}>
+                  All time
+                </button>
+              </div>
+              {top.length ? (
+                <ol className="np-history-list">
+                  {top.map((song, i) => (
+                    <TopRow key={song.id} rank={i + 1} song={song} />
+                  ))}
+                </ol>
+              ) : (
+                <p className="np-empty">
+                  {topError ? "Most played unavailable" : topLoaded ? "Nothing played yet" : "Loading…"}
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
@@ -119,16 +183,29 @@ export default function NowPlayingBar() {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="np-toggle"
-            onClick={() => setOpen((value) => !value)}
-            aria-expanded={open}
-            ref={buttonRef}
-          >
-            <span>{open ? "Close" : "History"}</span>
-            <span className={`np-chevron${open ? " is-open" : ""}`} aria-hidden="true">↑</span>
-          </button>
+          <div className="np-actions" ref={actionsRef}>
+            <button
+              type="button"
+              className="np-toggle"
+              onClick={() => setOpen((value) => !value)}
+              aria-expanded={open}
+              aria-controls="np-history-panel"
+            >
+              <span>{open ? "Close" : "History"}</span>
+              <span className={`np-chevron${open ? " is-open" : ""}`} aria-hidden="true">↑</span>
+            </button>
+            <a
+              className="np-top-link"
+              href="#most-played"
+              onClick={(e) => {
+                e.preventDefault();
+                setTab("top");
+                setOpen(true);
+              }}
+            >
+              Most played this week ↗
+            </a>
+          </div>
         </div>
       </div>
     </>

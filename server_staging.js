@@ -6,6 +6,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { topSongs } from './src/topSongs.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -395,7 +396,8 @@ function startHistoryTimer(entry) {
     pendingEntry = null;
     // Still the current track after MIN_PLAY_MS -> it wasn't skipped, so log it.
     if (nowplaying.enabled && trackKey(nowplaying) === key) {
-      NOWPLAYING_HISTORY.push(entry);
+      // playedAt lets us answer "what did I play this week?". Entries from before this existed have none.
+      NOWPLAYING_HISTORY.push({ ...entry, playedAt: Date.now() });
       log('info', 'history', `logged: "${entry[TITLE_KEY]}" (#${NOWPLAYING_HISTORY.length})`);
     }
   }, MIN_PLAY_MS);
@@ -463,6 +465,23 @@ app.get('/api/nowplaying/history', (req, res) => {
     .reverse();
 
   res.json({ items, total, nextBefore: start, hasMore: start > 0 });
+});
+
+// Most played songs over the last N days (default 7), with variants of the same song merged
+// ("- Slowed", "(feat. X)", "- 2022 Remaster", ...). See src/songKey.js for the merge rules.
+//   GET /api/nowplaying/top?days=7&limit=10   (last week)
+//   GET /api/nowplaying/top?days=0&limit=10   (all time; days=0 skips the date cutoff)
+// Only plays logged since timestamps were added count; older history entries have no `playedAt`.
+app.get('/api/nowplaying/top', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+
+  const requestedDays = parseInt(req.query.days, 10);
+  const days = requestedDays === 0 ? 0 : Math.min(Math.max(requestedDays || 7, 1), 90);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
+  const now = Date.now();
+  const since = days === 0 ? 0 : now - days * 24 * 60 * 60 * 1000;
+
+  res.json({ days, since, items: topSongs(NOWPLAYING_HISTORY, { sinceMs: since, limit, now }) });
 });
 
 app.delete('/api/nowplaying/history/single', authGuard, (req, res) => {

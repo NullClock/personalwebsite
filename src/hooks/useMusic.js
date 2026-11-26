@@ -13,6 +13,9 @@ const ART_KEYS = [
 
 const POLL_MS = 4000;
 const HISTORY_LIMIT = 30;
+const TOP_DAYS = 7;
+const TOP_ALL_DAYS = 0; // API sentinel: no date cutoff
+const TOP_LIMIT = 10;
 
 const EMPTY_TRACK = { enabled: false, key: "", title: "", artist: "", album: "", art: "" };
 
@@ -45,6 +48,17 @@ function normalizeHistoryItem(item) {
   return { ...normalizeTrack({ ...item, enabled: item.enabled !== false }), id: item.historyId };
 }
 
+// One row of "most played this week", already merged/ranked by the server.
+function normalizeTopItem(item) {
+  return {
+    id: item.key,
+    title: item.title || "",
+    artist: item.artist || "",
+    art: isWebUrl(item.art) ? item.art : "",
+    plays: Number(item.plays) || 0,
+  };
+}
+
 /**
  * Reads (never writes) the user's listening status from the backend.
  * The UI is display-only: there is no audio element and no progress tracking.
@@ -55,6 +69,9 @@ export default function useMusic() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState(false);
+  const [top, setTop] = useState([]);
+  const [topLoaded, setTopLoaded] = useState(false);
+  const [topError, setTopError] = useState(false);
 
   // Poll the current track. Pauses while the tab is hidden and never overlaps requests.
   useEffect(() => {
@@ -180,6 +197,21 @@ export default function useMusic() {
     }
   }, [fetchPage]);
 
+  // "Most played this week". The server does the ranking and merges variants of the same song
+  // (slowed, remasters, feat. credits, ...). The list is short and replaced wholesale, so a
+  // background reload can't disturb scroll position the way a growing history list could.
+  const loadTop = useCallback(async (range = "week") => {
+    try {
+      const days = range === "all" ? TOP_ALL_DAYS : TOP_DAYS;
+      const data = await apiJson(`/nowplaying/top?days=${days}&limit=${TOP_LIMIT}`);
+      setTop((Array.isArray(data.items) ? data.items : []).map(normalizeTopItem));
+      setTopLoaded(true);
+      setTopError(false);
+    } catch {
+      setTopError(true); // keep whatever is already shown
+    }
+  }, []);
+
   return {
     track,
     history,
@@ -189,5 +221,9 @@ export default function useMusic() {
     resetHistory,
     refreshHistory,
     loadMore,
+    top,
+    topLoaded,
+    topError,
+    loadTop,
   };
 }

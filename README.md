@@ -12,6 +12,15 @@ It uses a custom Tasker workflow on the phone that detects media events/changes 
 drain or performance overhead since it's just Tasker and also isn't a constant streaming connection to the server, but rather a single HTTP
 request (either POST or DELETE) when a song starts or stops.
 
+## Most played this week
+The History drawer has a "Most played" tab: your top songs from the last 7 days, ranked by play count. Variants of the same
+song are merged into one row (`- Slowed`, `(feat. X)`, `- 2022 Remaster`, `Artist • Recommended for you`, ...), and ads, generic
+"YouTube" entries and live streams are ignored. The merge rules live in `src/songKey.js`: add one-off fixes to its `ALIASES` table.
+
+- The drawer has a "This week" / "All time" switcher above the list; all time uses `days=0` (no date cutoff).
+- `GET /api/nowplaying/top?days=7&limit=10` returns the ranked list (public, read-only); `days=0` returns all time.
+- Every logged play is stamped with `playedAt`. History from before that was added has no timestamp, so it can't count toward "this week".
+
 ## Why an admin panel?
 To change things that would be inconvenient to go into the code every time a change was needed. For example:
   - Easier to manage song history (delete entries or clear history)

@@ -122,6 +122,29 @@
   animation: np-pulse 2s ease-in-out infinite;
 }
 
+.np-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Quiet hint under the main toggle: a link, not a second full-sized button. */
+.np-top-link {
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #aaa;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+  transition: color 0.4s, border-color 0.4s;
+}
+.np-top-link:hover,
+.np-top-link:focus-visible { color: var(--fg); border-bottom-color: currentColor; }
+.np-top-link:focus-visible { outline: 1px solid var(--fg); outline-offset: 3px; }
+
 .np-toggle {
   flex: 0 0 auto;
   display: flex;
@@ -182,6 +205,62 @@
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* Tabs in the drawer header: History | Most played */
+.np-tabs { display: flex; gap: 1.6rem; min-width: 0; }
+.np-tab {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.4s;
+}
+.np-tab:hover,
+.np-tab:focus-visible,
+.np-tab.is-active { color: var(--fg); }
+.np-tab.is-active { text-decoration: underline; text-underline-offset: 0.55em; text-decoration-thickness: 1px; }
+.np-tab:focus-visible { outline: 1px solid var(--fg); outline-offset: 4px; }
+.np-history-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* This week / All time switcher above the ranked list. */
+.np-range {
+  display: flex;
+  gap: 0.6rem;
+  padding: 1rem 1.5rem 0.6rem;
+}
+.np-range button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #444;
+  background: rgba(255, 255, 255, 0.02);
+  font: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #aaa;
+  cursor: pointer;
+  transition: color 0.4s, border-color 0.4s, background 0.4s;
+}
+.np-range button:hover,
+.np-range button:focus-visible { color: var(--fg); border-color: #777; }
+.np-range button.is-active {
+  color: var(--fg);
+  border-color: var(--fg);
+  background: rgba(255, 255, 255, 0.1);
+}
+.np-range button:focus-visible { outline: 1px solid var(--fg); outline-offset: 3px; }
+
+.np-rank {
+  flex: 0 0 1.4rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .np-history-list {
@@ -278,10 +357,15 @@
   .np-art { width: 2.75rem; height: 2.75rem; }
   .np-title { font-size: 1.05rem; }
   .np-toggle { padding: 0.5rem 0.65rem; font-size: 0.62rem; }
+  .np-top-link { font-size: 0.54rem; letter-spacing: 0.12em; }
   .np-history { width: 88vw; }
   .np-history-album { display: none; }
+  .np-tabs { gap: 1rem; }
+  .np-tab { letter-spacing: 0.18em; }
   .np-history-head,
   .np-history-list { padding-inline: 1rem; }
+  .np-range { padding-inline: 1rem; gap: 0.4rem; }
+  .np-range button { padding: 0.45rem 0.6rem; font-size: 0.66rem; letter-spacing: 0.12em; }
   .np-more { margin-inline: 1rem; }
   .np-sub { font-size: 0.62rem; letter-spacing: 0.22em; }
 }
