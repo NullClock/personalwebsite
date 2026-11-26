@@ -1,0 +1,662 @@
+diff --git a/README.md b/README.md
+index 25abc4a..e624468 100644
+--- a/README.md
++++ b/README.md
+@@ -12,6 +12,14 @@ It uses a custom Tasker workflow on the phone that detects media events/changes
+ drain or performance overhead since it's just Tasker and also isn't a constant streaming connection to the server, but rather a single HTTP
+ request (either POST or DELETE) when a song starts or stops.
+ 
++## Most played this week
++The History drawer has a "Most played" tab: your top songs from the last 7 days, ranked by play count. Variants of the same
++song are merged into one row (`- Slowed`, `(feat. X)`, `- 2022 Remaster`, `Artist • Recommended for you`, ...), and ads, generic
++"YouTube" entries and live streams are ignored. The merge rules live in `src/songKey.js`: add one-off fixes to its `ALIASES` table.
++
++- `GET /api/nowplaying/top?days=7&limit=10` returns the ranked list (public, read-only).
++- Every logged play is stamped with `playedAt`. History from before that was added has no timestamp, so it can't count toward "this week".
++
+ ## Why an admin panel?
+ To change things that would be inconvenient to go into the code every time a change was needed. For example:
+   - Easier to manage song history (delete entries or clear history)
+diff --git a/server.js b/server.js
+index 55a7b7d..838cc9a 100644
+--- a/server.js
++++ b/server.js
+@@ -6,6 +6,7 @@ import path from 'path';
+ import crypto from 'crypto';
+ import { fileURLToPath } from 'url';
+ import dotenv from 'dotenv';
++import { topSongs } from './src/topSongs.js';
+ 
+ const __filename = fileURLToPath(import.meta.url);
+ const __dirname = path.dirname(__filename);
+@@ -488,7 +489,8 @@ function startHistoryTimer(entry) {
+     pendingEntry = null;
+     // Still the current track after MIN_PLAY_MS -> it wasn't skipped, so log it.
+     if (nowplaying.enabled && trackKey(nowplaying) === key) {
+-      NOWPLAYING_HISTORY.push(entry);
++      // playedAt lets us answer "what did I play this week?". Entries from before this existed have none.
++      NOWPLAYING_HISTORY.push({ ...entry, playedAt: Date.now() });
+       saveHistory();
+       log('info', 'history', `logged: "${entry[TITLE_KEY]}" (#${NOWPLAYING_HISTORY.length})`);
+     }
+@@ -559,6 +561,21 @@ app.get('/api/nowplaying/history', (req, res) => {
+   res.json({ items, total, nextBefore: start, hasMore: start > 0 });
+ });
+ 
++// Most played songs over the last N days (default 7), with variants of the same song merged
++// ("- Slowed", "(feat. X)", "- 2022 Remaster", ...). See src/songKey.js for the merge rules.
++//   GET /api/nowplaying/top?days=7&limit=10
++// Only plays logged since timestamps were added count; older history entries have no `playedAt`.
++app.get('/api/nowplaying/top', (req, res) => {
++  res.set('Cache-Control', 'no-store');
++
++  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 90);
++  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
++  const now = Date.now();
++  const since = now - days * 24 * 60 * 60 * 1000;
++
++  res.json({ days, since, items: topSongs(NOWPLAYING_HISTORY, { sinceMs: since, limit, now }) });
++});
++
+ app.delete('/api/nowplaying/history/single', authGuard, (req, res) => {
+   const {index} = req.query;
+   if (!index || index == "")
+diff --git a/server_staging.js b/server_staging.js
+index c392196..bf3bc6b 100644
+--- a/server_staging.js
++++ b/server_staging.js
+@@ -6,6 +6,7 @@ import path from 'path';
+ import crypto from 'crypto';
+ import { fileURLToPath } from 'url';
+ import dotenv from 'dotenv';
++import { topSongs } from './src/topSongs.js';
+ 
+ const __filename = fileURLToPath(import.meta.url);
+ const __dirname = path.dirname(__filename);
+@@ -395,7 +396,8 @@ function startHistoryTimer(entry) {
+     pendingEntry = null;
+     // Still the current track after MIN_PLAY_MS -> it wasn't skipped, so log it.
+     if (nowplaying.enabled && trackKey(nowplaying) === key) {
+-      NOWPLAYING_HISTORY.push(entry);
++      // playedAt lets us answer "what did I play this week?". Entries from before this existed have none.
++      NOWPLAYING_HISTORY.push({ ...entry, playedAt: Date.now() });
+       log('info', 'history', `logged: "${entry[TITLE_KEY]}" (#${NOWPLAYING_HISTORY.length})`);
+     }
+   }, MIN_PLAY_MS);
+@@ -465,6 +467,21 @@ app.get('/api/nowplaying/history', (req, res) => {
+   res.json({ items, total, nextBefore: start, hasMore: start > 0 });
+ });
+ 
++// Most played songs over the last N days (default 7), with variants of the same song merged
++// ("- Slowed", "(feat. X)", "- 2022 Remaster", ...). See src/songKey.js for the merge rules.
++//   GET /api/nowplaying/top?days=7&limit=10
++// Only plays logged since timestamps were added count; older history entries have no `playedAt`.
++app.get('/api/nowplaying/top', (req, res) => {
++  res.set('Cache-Control', 'no-store');
++
++  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 7, 1), 90);
++  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
++  const now = Date.now();
++  const since = now - days * 24 * 60 * 60 * 1000;
++
++  res.json({ days, since, items: topSongs(NOWPLAYING_HISTORY, { sinceMs: since, limit, now }) });
++});
++
+ app.delete('/api/nowplaying/history/single', authGuard, (req, res) => {
+   const {index} = req.query;
+   if (!index || index == "")
+diff --git a/src/components/NowPlayingBar.jsx b/src/components/NowPlayingBar.jsx
+index b268a86..b6e0abf 100644
+--- a/src/components/NowPlayingBar.jsx
++++ b/src/components/NowPlayingBar.jsx
+@@ -36,21 +36,49 @@ function HistoryRow({ item, count }) {
+   );
+ }
+ 
++function TopRow({ rank, song }) {
++  return (
++    <li className="np-history-row">
++      <span className="np-rank" aria-hidden="true">{rank}</span>
++      <Art src={song.art} small />
++      <span className="np-history-meta">
++        <span className="np-history-title" title={song.title}>{song.title}</span>
++        <span className="np-history-artist" title={song.artist}>{song.artist || "Unknown artist"}</span>
++      </span>
++      <span className="np-count">{song.plays} {song.plays === 1 ? "play" : "plays"}</span>
++    </li>
++  );
++}
++
+ export default function NowPlayingBar() {
+-  const { track, history, hasMore, loadingHistory, historyError, refreshHistory, loadMore } = useMusic();
++  const {
++    track, history, hasMore, loadingHistory, historyError, resetHistory, refreshHistory, loadMore,
++    top, topLoaded, topError, loadTop,
++  } = useMusic();
+   const [open, setOpen] = useState(false);
++  const [tab, setTab] = useState("recent"); // "recent" | "top"
+   const panelRef = useRef(null);
+   const buttonRef = useRef(null);
+ 
+   const groups = useMemo(() => groupHistory(history), [history]);
+ 
+-  // Keep the list fresh while it's visible.
++  // Load a fresh list when the drawer opens, then keep the newest tracks up to date while it's
++  // visible. The periodic refresh only merges new tracks in, so it never wipes the pages you've
++  // loaded or moves your scroll position.
+   useEffect(() => {
+     if (!open) return undefined;
+-    refreshHistory();
++    resetHistory();
+     const id = setInterval(refreshHistory, 20000);
+     return () => clearInterval(id);
+-  }, [open, refreshHistory]);
++  }, [open, resetHistory, refreshHistory]);
++
++  // Most played this week: load when that tab is showing, then keep it fresh while it's visible.
++  useEffect(() => {
++    if (!open || tab !== "top") return undefined;
++    loadTop();
++    const id = setInterval(loadTop, 20000);
++    return () => clearInterval(id);
++  }, [open, tab, loadTop]);
+ 
+   useEffect(() => {
+     if (!open) return undefined;
+@@ -74,24 +102,49 @@ export default function NowPlayingBar() {
+       {open && (
+         <div className="np-history" role="dialog" aria-label="Song history" ref={panelRef}>
+           <div className="np-history-head">
+-            <span>Song history</span>
+-            <span>{history.length} {history.length === 1 ? "track" : "tracks"}</span>
++            <div className="np-tabs">
++              <button type="button" className={`np-tab${tab === "recent" ? " is-active" : ""}`} aria-pressed={tab === "recent"} onClick={() => setTab("recent")}>
++                History
++              </button>
++              <button type="button" className={`np-tab${tab === "top" ? " is-active" : ""}`} aria-pressed={tab === "top"} onClick={() => setTab("top")}>
++                Most played
++              </button>
++            </div>
++            <span>
++              {tab === "recent"
++                ? `${history.length} ${history.length === 1 ? "track" : "tracks"}`
++                : "This week"}
++            </span>
+           </div>
+ 
+-          {groups.length ? (
++          {tab === "recent" ? (
++            <>
++              {groups.length ? (
++                <ol className="np-history-list">
++                  {groups.map(({ id, item, count }) => (
++                    <HistoryRow key={id ?? item.key} item={item} count={count} />
++                  ))}
++                </ol>
++              ) : (
++                <p className="np-empty">{historyError ? "History unavailable" : "Nothing here yet"}</p>
++              )}
++
++              {hasMore && (
++                <button className="np-more" type="button" onClick={loadMore} disabled={loadingHistory}>
++                  {loadingHistory ? "Loading…" : "Load more"}
++                </button>
++              )}
++            </>
++          ) : top.length ? (
+             <ol className="np-history-list">
+-              {groups.map(({ id, item, count }) => (
+-                <HistoryRow key={id ?? item.key} item={item} count={count} />
++              {top.map((song, i) => (
++                <TopRow key={song.id} rank={i + 1} song={song} />
+               ))}
+             </ol>
+           ) : (
+-            <p className="np-empty">{historyError ? "History unavailable" : "Nothing here yet"}</p>
+-          )}
+-
+-          {hasMore && (
+-            <button className="np-more" type="button" onClick={loadMore} disabled={loadingHistory}>
+-              {loadingHistory ? "Loading…" : "Load more"}
+-            </button>
++            <p className="np-empty">
++              {topError ? "Most played unavailable" : topLoaded ? "Nothing played yet this week" : "Loading…"}
++            </p>
+           )}
+         </div>
+       )}
+diff --git a/src/historyMerge.js b/src/historyMerge.js
+new file mode 100644
+index 0000000..c18257a
+--- /dev/null
++++ b/src/historyMerge.js
+@@ -0,0 +1,24 @@
++// Pure helper for the song-history list. It has no React or browser imports on purpose,
++// so it can be tested in plain Node.
++
++// Folds a freshly fetched NEWEST page into the list we already have, without throwing away
++// the older pages the user has scrolled through and loaded.
++//
++// Both lists are newest-first, and every item has a stable numeric `id` (its index in the
++// server's append-only history). The fresh page replaces the top of the list (so new plays
++// show up and anything changed in that window is corrected), and everything older than that
++// page is kept exactly as it is.
++export function mergeNewest(prev, fresh) {
++  // The newest page is only empty when the server's history is empty (e.g. it was cleared).
++  if (!fresh.length) return [];
++  const oldestFreshId = fresh[fresh.length - 1].id;
++  return [...fresh, ...prev.filter((item) => item.id < oldestFreshId)];
++}
++
++// True when so many tracks arrived since the last refresh (laptop asleep with the drawer
++// open, say) that the fresh page no longer touches what we have. Merging would leave a hole,
++// so the caller should start over from the fresh page instead.
++export function hasGap(prevNewestId, fresh) {
++  if (prevNewestId == null || !fresh.length) return false;
++  return prevNewestId < fresh[fresh.length - 1].id - 1;
++}
+diff --git a/src/hooks/useMusic.js b/src/hooks/useMusic.js
+index 5956dc9..0b1fecb 100644
+--- a/src/hooks/useMusic.js
++++ b/src/hooks/useMusic.js
+@@ -1,5 +1,6 @@
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { apiJson } from "../api";
++import { hasGap, mergeNewest } from "../historyMerge";
+ 
+ // Metadata keys posted by Tasker / the phone.
+ const TITLE_KEY = "android.media.metadata.TITLE";
+@@ -12,6 +13,8 @@ const ART_KEYS = [
+ 
+ const POLL_MS = 4000;
+ const HISTORY_LIMIT = 30;
++const TOP_DAYS = 7;
++const TOP_LIMIT = 10;
+ 
+ const EMPTY_TRACK = { enabled: false, key: "", title: "", artist: "", album: "", art: "" };
+ 
+@@ -44,6 +47,17 @@ function normalizeHistoryItem(item) {
+   return { ...normalizeTrack({ ...item, enabled: item.enabled !== false }), id: item.historyId };
+ }
+ 
++// One row of "most played this week", already merged/ranked by the server.
++function normalizeTopItem(item) {
++  return {
++    id: item.key,
++    title: item.title || "",
++    artist: item.artist || "",
++    art: isWebUrl(item.art) ? item.art : "",
++    plays: Number(item.plays) || 0,
++  };
++}
++
+ /**
+  * Reads (never writes) the user's listening status from the backend.
+  * The UI is display-only: there is no audio element and no progress tracking.
+@@ -54,6 +68,9 @@ export default function useMusic() {
+   const [hasMore, setHasMore] = useState(false);
+   const [loadingHistory, setLoadingHistory] = useState(false);
+   const [historyError, setHistoryError] = useState(false);
++  const [top, setTop] = useState([]);
++  const [topLoaded, setTopLoaded] = useState(false);
++  const [topError, setTopError] = useState(false);
+ 
+   // Poll the current track. Pauses while the tab is hidden and never overlaps requests.
+   useEffect(() => {
+@@ -95,40 +112,103 @@ export default function useMusic() {
+ 
+   // History is paged newest-first with a stable `before` cursor.
+   const nextBefore = useRef(null);
+-  const loading = useRef(false);
++  const loading = useRef(false); // a reset or "load more" is in flight
++  const refreshing = useRef(false); // a background refresh is in flight
++  const newestId = useRef(null); // id of the newest track currently in the list
+ 
+-  const loadHistory = useCallback(async ({ reset = false } = {}) => {
+-    if (loading.current) return;
+-    if (!reset && nextBefore.current === null) return;
++  useEffect(() => {
++    newestId.current = history.length ? history[0].id : null;
++  }, [history]);
++
++  const fetchPage = useCallback(async (before) => {
++    const query = new URLSearchParams({ limit: String(HISTORY_LIMIT) });
++    if (before !== null && before !== undefined) query.set("before", String(before));
++    const data = await apiJson(`/nowplaying/history?${query}`);
++    return {
++      items: (Array.isArray(data.items) ? data.items : []).map(normalizeHistoryItem),
++      hasMore: Boolean(data.hasMore),
++      nextBefore: data.hasMore ? data.nextBefore : null,
++    };
++  }, []);
+ 
++  // Start over from the newest page. Used when the drawer opens.
++  const resetHistory = useCallback(async () => {
++    if (loading.current) return;
+     loading.current = true;
+     setLoadingHistory(true);
+     setHistoryError(false);
+-
+     try {
+-      const query = new URLSearchParams({ limit: String(HISTORY_LIMIT) });
+-      if (!reset && nextBefore.current !== null) query.set("before", String(nextBefore.current));
+-
+-      const data = await apiJson(`/nowplaying/history?${query}`);
+-      const items = (Array.isArray(data.items) ? data.items : []).map(normalizeHistoryItem);
++      const page = await fetchPage(null);
++      setHistory(page.items);
++      setHasMore(page.hasMore);
++      nextBefore.current = page.nextBefore;
++    } catch {
++      setHistoryError(true);
++    } finally {
++      loading.current = false;
++      setLoadingHistory(false);
++    }
++  }, [fetchPage]);
+ 
++  // Append the next older page. Used by the "Load more" button.
++  const loadMore = useCallback(async () => {
++    if (loading.current || nextBefore.current === null) return;
++    loading.current = true;
++    setLoadingHistory(true);
++    setHistoryError(false);
++    try {
++      const page = await fetchPage(nextBefore.current);
+       setHistory((prev) => {
+-        if (reset) return items;
+         const ids = new Set(prev.map((item) => item.id));
+-        return [...prev, ...items.filter((item) => !ids.has(item.id))];
++        return [...prev, ...page.items.filter((item) => !ids.has(item.id))];
+       });
+-      setHasMore(Boolean(data.hasMore));
+-      nextBefore.current = data.hasMore ? data.nextBefore : null;
++      setHasMore(page.hasMore);
++      nextBefore.current = page.nextBefore;
+     } catch {
+       setHistoryError(true);
+     } finally {
+       loading.current = false;
+       setLoadingHistory(false);
+     }
+-  }, []);
++  }, [fetchPage]);
++
++  // Background refresh while the drawer is open. It only folds in the newest tracks and never
++  // shrinks the list, so the pages you've loaded and your scroll position are left alone.
++  // It is silent: no loading state, and a failed refresh just keeps what's on screen.
++  const refreshHistory = useCallback(async () => {
++    if (refreshing.current) return;
++    refreshing.current = true;
++    try {
++      const page = await fetchPage(null);
++      if (hasGap(newestId.current, page.items)) {
++        // Too much happened to merge cleanly: start over from the fresh page.
++        setHistory(page.items);
++        setHasMore(page.hasMore);
++        nextBefore.current = page.nextBefore;
++      } else {
++        // hasMore / nextBefore are deliberately untouched: they track how far you've paged.
++        setHistory((prev) => mergeNewest(prev, page.items));
++      }
++    } catch {
++      /* keep the current list */
++    } finally {
++      refreshing.current = false;
++    }
++  }, [fetchPage]);
+ 
+-  const refreshHistory = useCallback(() => loadHistory({ reset: true }), [loadHistory]);
+-  const loadMore = useCallback(() => loadHistory(), [loadHistory]);
++  // "Most played this week". The server does the ranking and merges variants of the same song
++  // (slowed, remasters, feat. credits, ...). The list is short and replaced wholesale, so a
++  // background reload can't disturb scroll position the way a growing history list could.
++  const loadTop = useCallback(async () => {
++    try {
++      const data = await apiJson(`/nowplaying/top?days=${TOP_DAYS}&limit=${TOP_LIMIT}`);
++      setTop((Array.isArray(data.items) ? data.items : []).map(normalizeTopItem));
++      setTopLoaded(true);
++      setTopError(false);
++    } catch {
++      setTopError(true); // keep whatever is already shown
++    }
++  }, []);
+ 
+   return {
+     track,
+@@ -136,7 +216,12 @@ export default function useMusic() {
+     hasMore,
+     loadingHistory,
+     historyError,
++    resetHistory,
+     refreshHistory,
+     loadMore,
++    top,
++    topLoaded,
++    topError,
++    loadTop,
+   };
+ }
+diff --git a/src/songKey.js b/src/songKey.js
+new file mode 100644
+index 0000000..c1362d9
+--- /dev/null
++++ b/src/songKey.js
+@@ -0,0 +1,100 @@
++// Collapses the many variants of a song ("- Slowed", "(feat. X)", "- 2022 Remaster",
++// "Artist • Recommended for you", ...) into one canonical key so plays can be counted together.
++// Pure module (no imports): usable from the client and from server.js.
++
++const TITLE = "android.media.metadata.TITLE";
++const ARTIST = "android.media.metadata.ARTIST";
++const ADVERT = "android.media.metadata.ADVERTISEMENT";
++const SUBTITLE = "android.media.metadata.DISPLAY_SUBTITLE";
++
++// Artist names that contain a comma, so splitting on "," doesn't cut them in half.
++const COMMA_ARTISTS = ["Tyler, The Creator"];
++
++// Manual overrides for cases no rule can solve. Format: "artist|title" -> "artist|title",
++// both sides already folded (see fold()). Add to this as the review pass turns things up.
++const ALIASES = {
++  "lexiee|dreiton": "c418|dreiton", // "Dreiton - Best Part Looped Slower Reverb" is a loop of C418's Dreiton
++  // "luvsdepth|calm night": "kino|спокоиная ночь",
++};
++
++// A trailing segment is "noise" (safe to drop) if it contains one of these words...
++const STRONG = /\b(slowed|slower|sped up|speed(?:ed)? up|reverb|loop(?:ed)?|nightcore|remaster(?:ed)?)\b/i;
++// ...or is, in its entirety, one of these.
++const SIMPLE = /^(?:bonus(?: track)?|(?:radio |single |album |extended )?edit|(?:single|album) version|deluxe(?: edition| version)?|explicit|clean|mono|stereo)$/i;
++// Judgment calls: only dropped when mergeOptional is true.
++const OPTIONAL = /\b(?:live|ao vivo|demo|remix|acoustic|instrumental|strings? version|session)\b/i;
++
++// Lowercase, strip accents, unify quotes, drop punctuation. Used for keys only, never for display.
++function fold(s) {
++  return String(s ?? "")
++    .normalize("NFKD")
++    .replace(/\p{M}+/gu, "")
++    .replace(/ı/g, "i") // dotless i (e.g. "Lexıee") doesn't fold on its own
++    .replace(/[’‘`´]/g, "'")
++    .toLowerCase()
++    .replace(/['"]/g, "")
++    .replace(/[^\p{L}\p{N}]+/gu, " ")
++    .trim();
++}
++
++// "Dominic Fike • Recommended for you" -> "Dominic Fike"; "Daniel Caesar, Syd" -> "Daniel Caesar".
++function primaryArtist(rawArtist) {
++  let a = String(rawArtist ?? "").split("•")[0].trim();
++  for (const name of COMMA_ARTISTS) {
++    if (a.toLowerCase().startsWith(name.toLowerCase())) return name;
++  }
++  return a.split(",")[0].trim();
++}
++
++function isNoise(segment, { multiArtist, mergeOptional }) {
++  const s = segment.trim();
++  if (!s) return false;
++  if (/^(?:feat\.?|ft\.?|featuring)\s/i.test(s)) return true;
++  if (multiArtist && /^with\s/i.test(s)) return true; // "(with Mustafa)", but not "(With You)" on a solo song
++  if (STRONG.test(s) || SIMPLE.test(s)) return true;
++  return mergeOptional && OPTIONAL.test(s);
++}
++
++// Repeatedly peels noise off the END of the title: a trailing "(...)" or a trailing " - ...".
++// Never touches the middle, and never returns an empty string (so "(dream)" stays "(dream)").
++function cleanTitle(raw, opts) {
++  let t = String(raw ?? "").trim();
++  for (;;) {
++    const before = t;
++    const paren = t.match(/^(.*\S)\s*[(\[]([^()\[\]]*)[)\]]\s*$/);
++    if (paren && isNoise(paren[2], opts)) {
++      t = paren[1].trim();
++    } else {
++      const dash = t.match(/^(.*\S)\s+[-–—]\s+(.+)$/);
++      if (dash && isNoise(dash[2], opts)) t = dash[1].trim();
++    }
++    if (t === before) return t;
++  }
++}
++
++// Entries that aren't songs: Spotify ads, generic "YouTube" titles, live streams, web videos,
++// and half-loaded snapshots with no artist yet.
++export function isSong(entry) {
++  if (!entry || typeof entry !== "object") return false;
++  const title = String(entry[TITLE] ?? "").trim();
++  const artist = String(entry[ARTIST] ?? "").trim();
++  if (!title || !artist) return false;
++  if (entry[ADVERT] === 1) return false;
++  if (/^(?:advertisement|youtube)$/i.test(title)) return false;
++  if (/\blive\b/i.test(String(entry[SUBTITLE] ?? ""))) return false;
++  if (/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(artist)) return false; // artist is a domain, e.g. "wsj.com"
++  return true;
++}
++
++// -> { key, title, artist, aliased }. Count plays by `key`; show `title`/`artist` from the group's entries.
++export function songKey(entry, { mergeOptional = false } = {}) {
++  const rawArtist = String(entry?.[ARTIST] ?? "");
++  const opts = { multiArtist: rawArtist.includes(","), mergeOptional };
++  const title = cleanTitle(entry?.[TITLE], opts);
++  const artist = primaryArtist(rawArtist);
++  const natural = `${fold(artist)}|${fold(title)}`;
++  const key = ALIASES[natural] ?? natural;
++  // `aliased` marks entries that were folded into another song by ALIASES, so callers can prefer
++  // the original song's own title/artist/art when choosing what to display for the group.
++  return { key, title, artist, aliased: key !== natural };
++}
+diff --git a/src/styles/NowPlaying.css b/src/styles/NowPlaying.css
+index 101f059..7cf61e0 100644
+--- a/src/styles/NowPlaying.css
++++ b/src/styles/NowPlaying.css
+@@ -184,6 +184,35 @@
+   color: var(--muted);
+ }
+ 
++/* Tabs in the drawer header: History | Most played */
++.np-tabs { display: flex; gap: 1.6rem; min-width: 0; }
++.np-tab {
++  padding: 0;
++  border: 0;
++  background: none;
++  font: inherit;
++  letter-spacing: inherit;
++  text-transform: inherit;
++  color: var(--muted);
++  cursor: pointer;
++  white-space: nowrap;
++  transition: color 0.4s;
++}
++.np-tab:hover,
++.np-tab:focus-visible,
++.np-tab.is-active { color: var(--fg); }
++.np-tab.is-active { text-decoration: underline; text-underline-offset: 0.55em; text-decoration-thickness: 1px; }
++.np-tab:focus-visible { outline: 1px solid var(--fg); outline-offset: 4px; }
++.np-history-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
++
++.np-rank {
++  flex: 0 0 1.4rem;
++  font-size: 0.68rem;
++  letter-spacing: 0.1em;
++  color: var(--muted);
++  font-variant-numeric: tabular-nums;
++}
++
+ .np-history-list {
+   list-style: none;
+   margin: 0;
+@@ -280,6 +309,8 @@
+   .np-toggle { padding: 0.5rem 0.65rem; font-size: 0.62rem; }
+   .np-history { width: 88vw; }
+   .np-history-album { display: none; }
++  .np-tabs { gap: 1rem; }
++  .np-tab { letter-spacing: 0.18em; }
+   .np-history-head,
+   .np-history-list { padding-inline: 1rem; }
+   .np-more { margin-inline: 1rem; }
+diff --git a/src/topSongs.js b/src/topSongs.js
+new file mode 100644
+index 0000000..a7a9c1f
+--- /dev/null
++++ b/src/topSongs.js
+@@ -0,0 +1,62 @@
++// "Most played" aggregation over the now-playing history. Pure (only imports ./songKey.js), so the
++// server uses it directly and it can be tested in plain Node.
++import { isSong, songKey } from "./songKey.js";
++
++const ART_KEYS = ["android.media.metadata.ALBUM_ART_URI", "android.media.metadata.ART_URI"];
++const isWebUrl = (v) => typeof v === "string" && /^https?:\/\//i.test(v);
++// Tasker also posts content:// URIs a browser can't load, so only http(s) art is kept.
++const pickArt = (entry) => ART_KEYS.map((k) => entry[k]).find(isWebUrl) || "";
++
++const newView = () => ({ titles: new Map(), artists: new Map(), art: "", artAt: 0 });
++const mostCommon = (counts) => [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
++
++// history: entries in play order (oldest first). Entries without a numeric `playedAt` are skipped,
++// because we can't tell when they were played (everything logged before timestamps existed).
++// Returns [{ key, title, artist, art, plays, lastPlayedAt }], most played first;
++// ties go to whichever was played most recently.
++export function topSongs(history, { sinceMs = 0, limit = 10, now = Date.now(), mergeOptional = false } = {}) {
++  const groups = new Map();
++
++  for (const entry of history) {
++    const at = entry?.playedAt;
++    if (!Number.isFinite(at) || at < sinceMs || at > now) continue;
++    if (!isSong(entry)) continue;
++
++    const { key, title, artist, aliased } = songKey(entry, { mergeOptional });
++    let g = groups.get(key);
++    if (!g) {
++      g = { key, plays: 0, lastPlayedAt: 0, own: newView(), all: newView() };
++      groups.set(key, g);
++    }
++    g.plays += 1;
++    g.lastPlayedAt = Math.max(g.lastPlayedAt, at);
++
++    // Display data is tallied twice: from every entry, and from only the song's "own" entries
++    // (not ones folded in by an alias). Own entries win when there are any, so e.g. a looped
++    // re-upload merged into the original is shown under the original's name, artist and cover.
++    const art = pickArt(entry);
++    for (const view of aliased ? [g.all] : [g.own, g.all]) {
++      view.titles.set(title, (view.titles.get(title) || 0) + 1);
++      view.artists.set(artist, (view.artists.get(artist) || 0) + 1);
++      if (art && at >= view.artAt) {
++        view.art = art;
++        view.artAt = at;
++      }
++    }
++  }
++
++  return [...groups.values()]
++    .sort((a, b) => b.plays - a.plays || b.lastPlayedAt - a.lastPlayedAt)
++    .slice(0, limit)
++    .map((g) => {
++      const view = g.own.titles.size ? g.own : g.all;
++      return {
++        key: g.key,
++        title: mostCommon(view.titles),
++        artist: mostCommon(view.artists),
++        art: view.art,
++        plays: g.plays,
++        lastPlayedAt: g.lastPlayedAt,
++      };
++    });
++}

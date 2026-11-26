@@ -452,7 +452,7 @@ function saveHistory() {
 
 // A track only counts as "played" once it has been the current track for this long.
 // Anything replaced (or cleared) before that is treated as a skip and never reaches the history.
-const MIN_PLAY_MS = 15 * 1000;
+const MIN_PLAY_MS = 30 * 1000;
 
 const TITLE_KEY = 'android.media.metadata.TITLE';
 const ARTIST_KEY = 'android.media.metadata.ARTIST';

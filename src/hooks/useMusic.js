@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiJson } from "../api";
+import { hasGap, mergeNewest } from "../historyMerge";
 
 // Metadata keys posted by Tasker / the phone.
 const TITLE_KEY = "android.media.metadata.TITLE";
@@ -95,40 +96,89 @@ export default function useMusic() {
 
   // History is paged newest-first with a stable `before` cursor.
   const nextBefore = useRef(null);
-  const loading = useRef(false);
+  const loading = useRef(false); // a reset or "load more" is in flight
+  const refreshing = useRef(false); // a background refresh is in flight
+  const newestId = useRef(null); // id of the newest track currently in the list
 
-  const loadHistory = useCallback(async ({ reset = false } = {}) => {
+  useEffect(() => {
+    newestId.current = history.length ? history[0].id : null;
+  }, [history]);
+
+  const fetchPage = useCallback(async (before) => {
+    const query = new URLSearchParams({ limit: String(HISTORY_LIMIT) });
+    if (before !== null && before !== undefined) query.set("before", String(before));
+    const data = await apiJson(`/nowplaying/history?${query}`);
+    return {
+      items: (Array.isArray(data.items) ? data.items : []).map(normalizeHistoryItem),
+      hasMore: Boolean(data.hasMore),
+      nextBefore: data.hasMore ? data.nextBefore : null,
+    };
+  }, []);
+
+  // Start over from the newest page. Used when the drawer opens.
+  const resetHistory = useCallback(async () => {
     if (loading.current) return;
-    if (!reset && nextBefore.current === null) return;
-
     loading.current = true;
     setLoadingHistory(true);
     setHistoryError(false);
-
     try {
-      const query = new URLSearchParams({ limit: String(HISTORY_LIMIT) });
-      if (!reset && nextBefore.current !== null) query.set("before", String(nextBefore.current));
-
-      const data = await apiJson(`/nowplaying/history?${query}`);
-      const items = (Array.isArray(data.items) ? data.items : []).map(normalizeHistoryItem);
-
-      setHistory((prev) => {
-        if (reset) return items;
-        const ids = new Set(prev.map((item) => item.id));
-        return [...prev, ...items.filter((item) => !ids.has(item.id))];
-      });
-      setHasMore(Boolean(data.hasMore));
-      nextBefore.current = data.hasMore ? data.nextBefore : null;
+      const page = await fetchPage(null);
+      setHistory(page.items);
+      setHasMore(page.hasMore);
+      nextBefore.current = page.nextBefore;
     } catch {
       setHistoryError(true);
     } finally {
       loading.current = false;
       setLoadingHistory(false);
     }
-  }, []);
+  }, [fetchPage]);
 
-  const refreshHistory = useCallback(() => loadHistory({ reset: true }), [loadHistory]);
-  const loadMore = useCallback(() => loadHistory(), [loadHistory]);
+  // Append the next older page. Used by the "Load more" button.
+  const loadMore = useCallback(async () => {
+    if (loading.current || nextBefore.current === null) return;
+    loading.current = true;
+    setLoadingHistory(true);
+    setHistoryError(false);
+    try {
+      const page = await fetchPage(nextBefore.current);
+      setHistory((prev) => {
+        const ids = new Set(prev.map((item) => item.id));
+        return [...prev, ...page.items.filter((item) => !ids.has(item.id))];
+      });
+      setHasMore(page.hasMore);
+      nextBefore.current = page.nextBefore;
+    } catch {
+      setHistoryError(true);
+    } finally {
+      loading.current = false;
+      setLoadingHistory(false);
+    }
+  }, [fetchPage]);
+
+  // Background refresh while the drawer is open. It only folds in the newest tracks and never
+  // shrinks the list, so the pages you've loaded and your scroll position are left alone.
+  // It is silent: no loading state, and a failed refresh just keeps what's on screen.
+  const refreshHistory = useCallback(async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
+    try {
+      const page = await fetchPage(null);
+      if (hasGap(newestId.current, page.items)) {
+        // Too much happened to merge cleanly: start over from the fresh page.
+        setHistory(page.items);
+        setHasMore(page.hasMore);
+        nextBefore.current = page.nextBefore;
+      } else {
+        // hasMore / nextBefore are deliberately untouched: they track how far you've paged.
+        setHistory((prev) => mergeNewest(prev, page.items));
+      }
+    } catch {
+      /* keep the current list */
+    } finally {
+      refreshing.current = false;
+    }
+  }, [fetchPage]);
 
   return {
     track,
@@ -136,6 +186,7 @@ export default function useMusic() {
     hasMore,
     loadingHistory,
     historyError,
+    resetHistory,
     refreshHistory,
     loadMore,
   };

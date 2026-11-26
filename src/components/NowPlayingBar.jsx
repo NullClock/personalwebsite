@@ -37,20 +37,22 @@ function HistoryRow({ item, count }) {
 }
 
 export default function NowPlayingBar() {
-  const { track, history, hasMore, loadingHistory, historyError, refreshHistory, loadMore } = useMusic();
+  const { track, history, hasMore, loadingHistory, historyError, resetHistory, refreshHistory, loadMore } = useMusic();
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
 
   const groups = useMemo(() => groupHistory(history), [history]);
 
-  // Keep the list fresh while it's visible.
+  // Load a fresh list when the drawer opens, then keep the newest tracks up to date while it's
+  // visible. The periodic refresh only merges new tracks in, so it never wipes the pages you've
+  // loaded or moves your scroll position.
   useEffect(() => {
     if (!open) return undefined;
-    refreshHistory();
+    resetHistory();
     const id = setInterval(refreshHistory, 20000);
     return () => clearInterval(id);
-  }, [open, refreshHistory]);
+  }, [open, resetHistory, refreshHistory]);
 
   useEffect(() => {
     if (!open) return undefined;
