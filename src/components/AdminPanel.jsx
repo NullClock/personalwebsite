@@ -320,7 +320,7 @@ const HISTORY_KEYS = {
   title: "android.media.metadata.TITLE",
   artist: "android.media.metadata.ARTIST",
   album: "android.media.metadata.ALBUM",
-  art: ["android.media.metadata.ALBUM_ART_URI", "android.media.metadata.ART_URI"],
+  art: ["com.spotify.music.extra.ART_HTTPS_URI", "android.media.metadata.ALBUM_ART_URI", "android.media.metadata.ART_URI"],
 };
 
 function historyArt(item) {

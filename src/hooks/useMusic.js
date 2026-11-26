@@ -7,6 +7,7 @@ const TITLE_KEY = "android.media.metadata.TITLE";
 const ARTIST_KEY = "android.media.metadata.ARTIST";
 const ALBUM_KEY = "android.media.metadata.ALBUM";
 const ART_KEYS = [
+  "com.spotify.music.extra.ART_HTTPS_URI",
   "android.media.metadata.ALBUM_ART_URI",
   "android.media.metadata.ART_URI",
 ];

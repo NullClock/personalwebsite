@@ -64,8 +64,8 @@
   transform: translate(-50%, -50%);
   background: radial-gradient(
     ellipse at center,
-    rgba(255, 61, 210, 0.2) 0%,
-    rgba(150, 45, 255, 0.11) 42%,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.03) 42%,
     transparent 72%
   );
   pointer-events: none;
@@ -79,15 +79,15 @@ h1.neon {
   font-size: clamp(2.6rem, 10.5vw, 8.5rem);
   letter-spacing: 0.015em;
   line-height: 1.04;
-  color: #fff3ff;
-  -webkit-text-stroke: 0.4px rgba(255, 238, 255, 0.55);
+  color: #fff;
+  -webkit-text-stroke: 0.4px rgba(255, 255, 255, 0.45);
   text-shadow:
     0 0 1px #fff,
-    0 0 5px #ffc2f4,
-    0 0 12px #ff49d0,
-    0 0 26px #c02cff,
-    0 0 50px #7d15e6,
-    0 0 92px rgba(93, 12, 205, 0.9);
+    0 0 3px rgba(255, 255, 255, 0.55),
+    0 0 8px rgba(255, 255, 255, 0.3),
+    0 0 16px rgba(220, 225, 235, 0.18),
+    0 0 28px rgba(190, 195, 210, 0.1),
+    0 0 44px rgba(150, 155, 170, 0.06);
   animation: neon-buzz 9s steps(1, end) infinite;
 }
 
@@ -128,8 +128,8 @@ h1.neon {
   font-size: clamp(0.66rem, 2.2vw, 0.86rem);
   letter-spacing: 0.38em;
   text-transform: uppercase;
-  color: #e6d0ff;
-  text-shadow: 0 0 18px rgba(190, 80, 255, 0.7);
+  color: #d8dbe3;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.14);
   opacity: 0;
   animation: fade-in 1.4s ease 1.15s forwards;
 }
@@ -143,7 +143,7 @@ h1.neon {
   content: "";
   width: clamp(18px, 6vw, 70px);
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(210, 128, 255, 0.8));
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45));
 }
 
 .subtitle::after { transform: scaleX(-1); }
@@ -156,7 +156,7 @@ h1.neon {
   left: 50%;
   z-index: 10;
   transform: translateX(-50%);
-  color: #a9f4ff;
+  color: #c8ced8;
   text-decoration: none;
   opacity: calc(1 - var(--p) * 5);
 }
@@ -175,7 +175,7 @@ h1.neon {
 .scroll-cue svg {
   width: 18px;
   height: 28px;
-  filter: drop-shadow(0 0 6px rgba(126, 249, 255, 0.85));
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
   animation: bob 1.8s ease-in-out infinite;
 }
 

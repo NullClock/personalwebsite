@@ -16,6 +16,7 @@ request (either POST or DELETE) when a song starts or stops.
 The History drawer has a "Most played" tab: your top songs from the last 7 days, ranked by play count. Variants of the same
 song are merged into one row (`- Slowed`, `(feat. X)`, `- 2022 Remaster`, `Artist • Recommended for you`, ...), and ads, generic
 "YouTube" entries and live streams are ignored. The merge rules live in `src/songKey.js`: add one-off fixes to its `ALIASES` table.
+Incoming tracks are cleaned with those same rules before they're logged, so the live display and history use the same names as the ranking.
 
 - The drawer has a "This week" / "All time" switcher above the list; all time uses `days=0` (no date cutoff).
 - `GET /api/nowplaying/top?days=7&limit=10` returns the ranked list (public, read-only); `days=0` returns all time.

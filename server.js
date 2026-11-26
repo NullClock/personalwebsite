@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { topSongs } from './src/topSongs.js';
+import { songKey } from './src/songKey.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -519,13 +520,18 @@ app.post('/api/nowplaying', authGuard, (req, res) => {
     return res.sendStatus(200);
   }
 
+  // Strip variant suffixes / extra artists with the same rules the "most played" merge uses,
+  // so the live track, dedupe key and logged history all use the canonical display name.
+  const { title, artist } = songKey(body);
+  const incoming = { ...body, [TITLE_KEY]: title, [ARTIST_KEY]: artist };
+
   log('info', 'nowplaying',
-    `now playing: "${body[TITLE_KEY]}" by "${body[ARTIST_KEY]}"`);
+    `now playing: "${title}" by "${artist}"`);
 
   // A repeat POST for the track that's already playing is a metadata update, not a new play:
   // it must not restart the 15s clock or log the same play twice.
-  const isSameTrack = nowplaying.enabled && trackKey(nowplaying) === trackKey(body);
-  nowplaying = { ...body, enabled: true };
+  const isSameTrack = nowplaying.enabled && trackKey(nowplaying) === trackKey(incoming);
+  nowplaying = { ...incoming, enabled: true };
 
   if (!isSameTrack) {
     cancelHistoryTimer(); // the previous track was replaced before MIN_PLAY_MS -> skipped

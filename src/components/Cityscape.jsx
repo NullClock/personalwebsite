@@ -15,10 +15,10 @@ function mulberry32(seed) {
 }
 
 const WINDOW_COLORS = [
-  "255, 79, 216", // magenta
-  "126, 249, 255", // cyan
-  "176, 107, 255", // violet
-  "255, 184, 107", // sodium-lamp amber
+  "255, 255, 255", // white
+  "200, 220, 240", // cool white
+  "255, 236, 200", // warm white
+  "255, 214, 170", // sodium-lamp amber
 ];
 
 // Each layer is a row of flat building silhouettes. Heights are a percentage
@@ -46,7 +46,7 @@ function makeLayer({ seed, count, minHeight, maxHeight, antennaChance = 0.16, si
       antenna: rand() < antennaChance,
       antennaHeight: +(8 + rand() * 18).toFixed(1),
       sign: rand() < signChance,
-      signColor: rand() < 0.5 ? "255, 79, 216" : "126, 249, 255",
+      signColor: rand() < 0.5 ? "255, 255, 255" : "200, 220, 240",
       flicker: rand() < 0.1,
       winDelay: +(rand() * 7).toFixed(2),
     };

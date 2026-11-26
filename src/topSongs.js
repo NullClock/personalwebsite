@@ -2,7 +2,11 @@
 // server uses it directly and it can be tested in plain Node.
 import { isSong, songKey } from "./songKey.js";
 
-const ART_KEYS = ["android.media.metadata.ALBUM_ART_URI", "android.media.metadata.ART_URI"];
+const ART_KEYS = [
+  "com.spotify.music.extra.ART_HTTPS_URI",
+  "android.media.metadata.ALBUM_ART_URI",
+  "android.media.metadata.ART_URI",
+];
 const isWebUrl = (v) => typeof v === "string" && /^https?:\/\//i.test(v);
 // Tasker also posts content:// URIs a browser can't load, so only http(s) art is kept.
 const pickArt = (entry) => ART_KEYS.map((k) => entry[k]).find(isWebUrl) || "";

@@ -7,7 +7,7 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: #05010c;
+  background: #050507;
   animation: city-in 1.8s var(--ease) both;
 }
 
@@ -23,20 +23,20 @@
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 75% 48% at 50% 96%, rgba(196, 82, 255, 0.55), transparent 68%),
-    radial-gradient(ellipse 58% 34% at 50% 54%, rgba(126, 38, 222, 0.34), transparent 72%),
-    radial-gradient(ellipse 44% 30% at 86% 66%, rgba(255, 79, 216, 0.22), transparent 72%),
-    radial-gradient(ellipse 55% 40% at 12% 72%, rgba(92, 45, 200, 0.42), transparent 72%),
+    radial-gradient(ellipse 75% 48% at 50% 96%, rgba(255, 255, 255, 0.12), transparent 68%),
+    radial-gradient(ellipse 58% 34% at 50% 54%, rgba(255, 255, 255, 0.07), transparent 72%),
+    radial-gradient(ellipse 44% 30% at 86% 66%, rgba(255, 255, 255, 0.04), transparent 72%),
+    radial-gradient(ellipse 55% 40% at 12% 72%, rgba(255, 255, 255, 0.06), transparent 72%),
     linear-gradient(
       180deg,
-      #03000a 0%,
-      #080114 26%,
-      #15032c 48%,
-      #2c0852 66%,
-      #571384 80%,
-      #7d1fa8 89%,
-      #340c4e 95%,
-      #07010e 100%
+      #030304 0%,
+      #08090c 26%,
+      #101217 48%,
+      #1a1d24 66%,
+      #252932 80%,
+      #30343f 89%,
+      #16181e 95%,
+      #050506 100%
     );
 }
 
@@ -80,7 +80,7 @@
   border-radius: 50%;
   background: #fff;
   opacity: var(--star-opacity, 0.7);
-  box-shadow: 0 0 4px 1px rgba(221, 198, 255, 0.45);
+  box-shadow: 0 0 3px 1px rgba(255, 255, 255, 0.16);
 }
 
 @keyframes twinkle {
@@ -99,14 +99,14 @@
   aspect-ratio: 1;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 30% 26%, rgba(255, 244, 255, 0.38) 0%, transparent 22%),
-    radial-gradient(circle at 62% 70%, rgba(52, 8, 90, 0.32) 0%, transparent 20%),
-    radial-gradient(circle at 72% 36%, rgba(255, 214, 255, 0.18) 0%, transparent 16%),
-    radial-gradient(circle at 36% 30%, #ffe8ff 0%, #e2a2ff 22%, #a33cff 48%, #5b1296 74%, #22043c 100%);
+    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.38) 0%, transparent 22%),
+    radial-gradient(circle at 62% 70%, rgba(30, 34, 42, 0.32) 0%, transparent 20%),
+    radial-gradient(circle at 72% 36%, rgba(255, 255, 255, 0.18) 0%, transparent 16%),
+    radial-gradient(circle at 36% 30%, #ffffff 0%, #e6e6ef 22%, #b9bcc9 48%, #7d8191 74%, #2c2f38 100%);
   box-shadow:
-    0 0 26px rgba(210, 100, 255, 0.55),
-    0 0 90px rgba(140, 50, 255, 0.4),
-    0 0 180px rgba(110, 30, 220, 0.25);
+    0 0 16px rgba(255, 255, 255, 0.2),
+    0 0 44px rgba(255, 255, 255, 0.09),
+    0 0 80px rgba(255, 255, 255, 0.04);
   opacity: calc(1 - var(--p, 0) * 1.1);
   transform: translateY(calc(var(--p, 0) * 6vh));
   /* The moon moves and fades on every scroll frame. Keeping it on its own
@@ -122,7 +122,7 @@
   background: repeating-linear-gradient(
     0deg,
     transparent 0 3px,
-    rgba(6, 0, 14, 0.2) 3px 4px
+    rgba(8, 9, 12, 0.2) 3px 4px
   );
   opacity: 0.6;
 }
@@ -135,10 +135,10 @@
   z-index: 1;
   width: 42vw;
   height: 76svh;
-  opacity: 0.5;
+  opacity: 0.26;
   transform-origin: 50% 100%;
   clip-path: polygon(47% 100%, 53% 100%, 100% 0, 0 0);
-  background: linear-gradient(to top, rgba(176, 92, 255, 0.24), rgba(176, 92, 255, 0) 74%);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 74%);
   animation: sweep 16s ease-in-out infinite alternate;
 }
 
@@ -147,9 +147,9 @@
   right: 2%;
   --from: 13deg;
   --to: -6deg;
-  opacity: 0.32;
+  opacity: 0.16;
   animation-duration: 21s;
-  background: linear-gradient(to top, rgba(103, 238, 255, 0.2), rgba(103, 238, 255, 0) 74%);
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 74%);
 }
 
 @keyframes sweep {
@@ -176,8 +176,8 @@
   --dx: -2vw;
 }
 .skyline--far .bld {
-  --bld-top: #1d0836;
-  --bld-mid: #0a0217;
+  --bld-top: #161a21;
+  --bld-mid: #0a0c11;
 }
 
 .skyline--mid {
@@ -186,8 +186,8 @@
   --dx: 1.4vw;
 }
 .skyline--mid .bld {
-  --bld-top: #2a0a4c;
-  --bld-mid: #0d021c;
+  --bld-top: #1e222b;
+  --bld-mid: #0d1016;
 }
 
 /* Front row: darkest, tallest, retracts last. */
@@ -198,8 +198,8 @@
   --dx: 3vw;
 }
 .skyline--near .bld {
-  --bld-top: #360d60;
-  --bld-mid: #0b0115;
+  --bld-top: #262b35;
+  --bld-mid: #0b0e13;
 }
 
 .skyline__band {
@@ -225,8 +225,8 @@
   position: absolute;
   bottom: 0;
   contain: layout style;
-  background: linear-gradient(180deg, var(--bld-top) 0%, var(--bld-mid) 64%, #030007 100%);
-  border-top: 1px solid rgba(190, 100, 255, 0.28);
+  background: linear-gradient(180deg, var(--bld-top) 0%, var(--bld-mid) 64%, #030405 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .bld__windows {
@@ -242,7 +242,7 @@
     repeating-linear-gradient(
       0deg,
       transparent 0 4px,
-      rgba(3, 0, 9, 0.96) 4px 8px
+      rgba(3, 4, 6, 0.96) 4px 8px
     );
 }
 
@@ -267,7 +267,7 @@
   left: 50%;
   width: 1px;
   height: var(--ah, 12%);
-  background: linear-gradient(to top, rgba(255, 120, 224, 0.55), rgba(255, 120, 224, 0.05));
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.02));
 }
 
 .bld__antenna::before {
@@ -278,8 +278,8 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #ff5bdd;
-  box-shadow: 0 0 8px 2px rgba(255, 79, 216, 0.85);
+  background: #fff;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.28);
   transform: translateX(-50%);
   animation: beacon 2.6s ease-in-out infinite;
 }
@@ -296,8 +296,8 @@
   width: 2px;
   height: 34%;
   border-radius: 2px;
-  background: rgba(var(--sign), 0.9);
-  box-shadow: 0 0 7px 1px rgba(var(--sign), 0.8);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 3px rgba(255, 255, 255, 0.25);
   animation: sign-flicker 5s steps(1, end) infinite;
 }
 
@@ -317,9 +317,9 @@
   height: 28svh;
   z-index: 4;
   background:
-    radial-gradient(ellipse at 26% 100%, rgba(160, 62, 255, 0.28), transparent 62%),
-    radial-gradient(ellipse at 72% 100%, rgba(255, 79, 216, 0.16), transparent 58%),
-    radial-gradient(ellipse at 50% 100%, rgba(110, 50, 220, 0.22), transparent 72%);
+    radial-gradient(ellipse at 26% 100%, rgba(255, 255, 255, 0.08), transparent 62%),
+    radial-gradient(ellipse at 72% 100%, rgba(255, 255, 255, 0.05), transparent 58%),
+    radial-gradient(ellipse at 50% 100%, rgba(255, 255, 255, 0.06), transparent 72%);
   opacity: calc(1 - var(--p, 0));
   animation: haze-drift 24s ease-in-out infinite alternate;
 }
@@ -336,12 +336,12 @@
   bottom: 0;
   height: 13svh;
   z-index: 4;
-  border-top: 1px solid rgba(204, 118, 255, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
   background:
-    linear-gradient(180deg, rgba(143, 46, 214, 0.4) 0%, rgba(12, 2, 24, 0.92) 38%, #000 100%),
-    repeating-linear-gradient(90deg, rgba(170, 84, 255, 0.22) 0 1px, transparent 1px 54px),
-    repeating-linear-gradient(0deg, rgba(170, 84, 255, 0.14) 0 1px, transparent 1px 28px);
-  box-shadow: 0 -18px 60px rgba(140, 40, 255, 0.35);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(12, 2, 24, 0.92) 38%, #000 100%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 54px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 28px);
+  box-shadow: 0 -10px 30px rgba(255, 255, 255, 0.07);
   opacity: calc(1 - var(--p, 0));
   /* Street gradient + glow are expensive to rasterise, so fade the cached
      layer instead of repainting it on every scroll frame. */
@@ -360,7 +360,7 @@
       rgba(255, 255, 255, 0.016) 0 1px,
       transparent 1px 3px
     ),
-    linear-gradient(180deg, rgba(3, 0, 8, 0.72) 0%, transparent 26%, transparent 60%, rgba(0, 0, 0, 0.82) 100%),
+    linear-gradient(180deg, rgba(3, 4, 6, 0.72) 0%, transparent 26%, transparent 60%, rgba(0, 0, 0, 0.82) 100%),
     radial-gradient(ellipse at 50% 42%, transparent 26%, rgba(0, 0, 0, 0.55) 100%);
 }
 
@@ -439,18 +439,18 @@
 }
 
 /* Simplify the sky gradient — fewer radial-gradient layers = faster rasterise.
-   The linear gradient (the deep purple → black tone) is kept for atmosphere. */
+   The linear gradient (the cool grey → black tone) is kept for atmosphere. */
 [data-lite] .city__sky {
   background: linear-gradient(
     180deg,
-    #03000a 0%,
-    #080114 26%,
-    #15032c 48%,
-    #2c0852 66%,
-    #571384 80%,
-    #7d1fa8 89%,
-    #340c4e 95%,
-    #07010e 100%
+    #030304 0%,
+    #08090c 26%,
+    #101217 48%,
+    #1a1d24 66%,
+    #252932 80%,
+    #30343f 89%,
+    #16181e 95%,
+    #050506 100%
   );
 }
 
